@@ -1,0 +1,15 @@
+
+#home-page-skeleton{
+  position: relative;
+  z-index: 0;
+  pointer-events: none;
+  min-width: 0;
+  opacity: 1;
+  margin: 56px 0 0;
+  display: -moz-flexbox;
+  display: -ms-flexbox;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-flex-direction: row;
+  flex-direction: row
+}
