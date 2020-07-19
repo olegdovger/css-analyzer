@@ -1,4 +1,4 @@
-# web-design-analyzer
+# css-analyzer
 
 **WIP** (work in progress)  
 
