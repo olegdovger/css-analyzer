@@ -1,3 +1,4 @@
 language: rust
 script:
   - cargo test --package css_parser --lib color::tests
+  - cargo test --package css_parser --lib parser::tests

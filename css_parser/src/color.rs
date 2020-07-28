@@ -3,8 +3,8 @@ use std::fmt;
 
 #[derive(PartialEq, Clone)]
 pub struct Color {
-    pub original: &'static str,
-    pub pattern: &'static str,
+    pub original: String,
+    pub pattern: String,
     pub data: ColorData,
 }
 #[derive(PartialEq, Clone, Debug)]
@@ -15,14 +15,14 @@ pub enum ColorData {
 }
 
 impl Color {
-    pub fn none(color: &'static str) -> Self {
+    pub fn none(color: &str) -> Self {
         Color {
-            pattern: "none",
+            pattern: "none".to_string(),
             data: ColorData::NONE,
-            original: color,
+            original: color.to_string(),
         }
     }
-    pub fn new(color: &'static str) -> Self {
+    pub fn new(color: &str) -> Self {
         match color {
             color if color == "black" => Color::new("#000000"),
             color if color == "silver" => Color::new("#c0c0c0"),
@@ -177,7 +177,7 @@ impl Color {
 
             color if color.starts_with("#") => match color.len() {
                 9 => Color {
-                    pattern: "#XXXXXXXX",
+                    pattern: "#XXXXXXXX".to_string(),
                     data: ColorData::RGBA {
                         r: hex_to_digit(
                             &std::iter::repeat(&color[1..3]).take(2).collect::<String>()[..],
@@ -193,20 +193,20 @@ impl Color {
                         ) as f32
                             / 255.,
                     },
-                    original: color,
+                    original: color.to_string(),
                 },
                 7 => Color {
-                    pattern: "#XXXXXX",
+                    pattern: "#XXXXXX".to_string(),
                     data: ColorData::RGBA {
                         r: hex_to_digit(&color[1..3]),
                         g: hex_to_digit(&color[3..5]),
                         b: hex_to_digit(&color[5..7]),
                         a: 1.,
                     },
-                    original: color,
+                    original: color.to_string(),
                 },
                 5 => Color {
-                    pattern: "#XXXX",
+                    pattern: "#XXXX".to_string(),
                     data: ColorData::RGBA {
                         r: hex_to_digit(
                             &std::iter::repeat(&color[1..2]).take(2).collect::<String>()[..],
@@ -222,10 +222,10 @@ impl Color {
                         ) as f32
                             / 255.,
                     },
-                    original: color,
+                    original: color.to_string(),
                 },
                 4 => Color {
-                    pattern: "#XXX",
+                    pattern: "#XXX".to_string(),
                     data: ColorData::RGBA {
                         r: hex_to_digit(
                             &std::iter::repeat(&color[1..2]).take(2).collect::<String>()[..],
@@ -238,7 +238,7 @@ impl Color {
                         ),
                         a: 1.,
                     },
-                    original: color,
+                    original: color.to_string(),
                 },
                 _ => Color::default(),
             },
@@ -255,7 +255,7 @@ impl Color {
                         let color_channels: Vec<f32> = channels
                             .into_iter()
                             .map(|s| {
-                                let mut s_trimmed = s.trim();
+                                let s_trimmed = s.trim();
                                 let has_percentage = s_trimmed.ends_with("%");
                                 let num = match has_percentage {
                                     true => s_trimmed.trim_end_matches('%'),
@@ -272,14 +272,14 @@ impl Color {
                             .collect();
 
                         Color {
-                            pattern: "rgba",
+                            pattern: "rgba".to_string(),
                             data: ColorData::RGBA {
                                 r: color_channels[0],
                                 g: color_channels[1],
                                 b: color_channels[2],
                                 a: color_channels[3] / 255.,
                             },
-                            original: color,
+                            original: color.to_string(),
                         }
                     }
                 }
@@ -297,7 +297,7 @@ impl Color {
                         let color_channels: Vec<f32> = channels
                             .into_iter()
                             .map(|s| {
-                                let mut s_trimmed = s.trim();
+                                let s_trimmed = s.trim();
                                 let has_percentage = s_trimmed.ends_with("%");
                                 let num = match has_percentage {
                                     true => s_trimmed.trim_end_matches('%'),
@@ -314,14 +314,14 @@ impl Color {
                             .collect();
 
                         Color {
-                            pattern: "rgb",
+                            pattern: "rgb".to_string(),
                             data: ColorData::RGBA {
                                 r: color_channels[0],
                                 g: color_channels[1],
                                 b: color_channels[2],
                                 a: 1.,
                             },
-                            original: color,
+                            original: color.to_string(),
                         }
                     }
                 }
@@ -340,7 +340,7 @@ impl Color {
                             channels.into_iter().map(|s| s.trim()).collect();
 
                         Color {
-                            pattern: "hsla",
+                            pattern: "hsla".to_string(),
                             data: ColorData::HSLA {
                                 h: color_channels[0].parse::<f32>().unwrap(),
                                 s: color_channels[1]
@@ -353,7 +353,7 @@ impl Color {
                                     .unwrap(),
                                 a: color_channels[3].trim().parse::<f32>().unwrap(),
                             },
-                            original: color,
+                            original: color.to_string(),
                         }
                     }
                 }
@@ -372,7 +372,7 @@ impl Color {
                             channels.into_iter().map(|s| s.trim()).collect();
 
                         Color {
-                            pattern: "hsl",
+                            pattern: "hsl".to_string(),
                             data: ColorData::HSLA {
                                 h: color_channels[0].parse::<f32>().unwrap(),
                                 s: color_channels[1]
@@ -385,7 +385,7 @@ impl Color {
                                     .unwrap(),
                                 a: 1.,
                             },
-                            original: color,
+                            original: color.to_string(),
                         }
                     }
                 }
@@ -404,10 +404,17 @@ impl Default for Color {
 
 impl fmt::Debug for Color {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "\nColor:\n");
-        write!(f, "  pattern:  {:?}\n", self.pattern);
-        write!(f, "  data:     {:?}\n", self.data);
-        write!(f, "  original: {:?}\n", self.original)
+        write!(
+            f,
+            "Color: pattern: {:?}, data: {:?}, original: {:?}",
+            self.pattern, self.data, self.original
+        )
+    }
+}
+
+impl fmt::Display for Color {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.original)
     }
 }
 
@@ -416,10 +423,6 @@ fn hex_to_digit(num: &str) -> f32 {
         Ok(n) => n,
         Err(_) => 0,
     }) as f32
-}
-
-fn repeat_str(s: &str, num: usize) -> String {
-    std::iter::repeat(s).take(num).collect::<String>()
 }
 
 #[cfg(test)]
@@ -433,14 +436,14 @@ mod tests {
         assert_eq!(
             Color::new(value),
             Color {
-                pattern: "#XXX",
+                pattern: "#XXX".to_string(),
                 data: ColorData::RGBA {
                     r: 255.,
                     g: 255.,
                     b: 255.,
                     a: 1.,
                 },
-                original: value
+                original: value.to_string()
             },
             "Parse \"{}\"",
             value
@@ -451,14 +454,14 @@ mod tests {
         assert_eq!(
             Color::new(value),
             Color {
-                pattern: "#XXXX",
+                pattern: "#XXXX".to_string(),
                 data: ColorData::RGBA {
                     r: 255.,
                     g: 255.,
                     b: 255.,
                     a: 1.,
                 },
-                original: value
+                original: value.to_string()
             },
             "Parse \"{}\"",
             value
@@ -469,14 +472,14 @@ mod tests {
         assert_eq!(
             Color::new(value),
             Color {
-                pattern: "#XXXXXX",
+                pattern: "#XXXXXX".to_string(),
                 data: ColorData::RGBA {
                     r: 255.,
                     g: 255.,
                     b: 255.,
                     a: 1.,
                 },
-                original: value
+                original: value.to_string()
             },
             "Parse \"{}\"",
             value
@@ -489,14 +492,14 @@ mod tests {
         assert_eq!(
             Color::new(value),
             Color {
-                pattern: "rgba",
+                pattern: "rgba".to_string(),
                 data: ColorData::RGBA {
                     r: 255.,
                     g: 255.,
                     b: 255.,
                     a: 0.54901963,
                 },
-                original: value
+                original: value.to_string()
             },
             "Parse \"{}\"",
             value
@@ -507,14 +510,14 @@ mod tests {
         assert_eq!(
             Color::new(value),
             Color {
-                pattern: "rgba",
+                pattern: "rgba".to_string(),
                 data: ColorData::RGBA {
                     r: 255.,
                     g: 255.,
                     b: 255.,
                     a: 1.,
                 },
-                original: value
+                original: value.to_string()
             },
             "Parse \"{}\"",
             value
@@ -522,19 +525,19 @@ mod tests {
     }
     #[test]
     fn parse_rgb() {
-        let value = "rgb(255, 255, 255)";
+        let value: &str = "rgb(255, 255, 255)";
 
         assert_eq!(
             Color::new(value),
             Color {
-                pattern: "rgb",
+                pattern: "rgb".to_string(),
                 data: ColorData::RGBA {
                     r: 255.,
                     g: 255.,
                     b: 255.,
                     a: 1.,
                 },
-                original: value
+                original: value.to_string()
             },
             "Parse \"{}\"",
             value
@@ -545,14 +548,14 @@ mod tests {
         assert_eq!(
             Color::new(value),
             Color {
-                pattern: "rgb",
+                pattern: "rgb".to_string(),
                 data: ColorData::RGBA {
                     r: 255.,
                     g: 255.,
                     b: 255.,
                     a: 1.,
                 },
-                original: value
+                original: value.to_string()
             },
             "Parse \"{}\"",
             value
@@ -565,14 +568,14 @@ mod tests {
         assert_eq!(
             Color::new(value),
             Color {
-                pattern: "hsla",
+                pattern: "hsla".to_string(),
                 data: ColorData::HSLA {
                     h: 22.,
                     s: 43.,
                     l: 100.,
                     a: 0.5
                 },
-                original: value
+                original: value.to_string()
             },
             "Parse \"{}\"",
             value
@@ -585,14 +588,14 @@ mod tests {
         assert_eq!(
             Color::new(value),
             Color {
-                pattern: "hsl",
+                pattern: "hsl".to_string(),
                 data: ColorData::HSLA {
                     h: 231.,
                     s: 34.,
                     l: 12.,
                     a: 1.
                 },
-                original: value
+                original: value.to_string()
             },
             "Parse \"{}\"",
             value
@@ -771,9 +774,9 @@ mod tests {
         assert_eq!(
             Color::new(value),
             Color {
-                pattern: "none",
+                pattern: "none".to_string(),
                 data: ColorData::NONE,
-                original: value
+                original: value.to_string()
             },
             "Parse \"{}\"",
             value
@@ -786,9 +789,9 @@ mod tests {
         assert_eq!(
             Color::new(value),
             Color {
-                pattern: "none",
+                pattern: "none".to_string(),
                 data: ColorData::NONE,
-                original: value
+                original: value.to_string()
             },
             "Parse \"{}\"",
             value
@@ -801,9 +804,9 @@ mod tests {
         assert_eq!(
             Color::new(value),
             Color {
-                pattern: "none",
+                pattern: "none".to_string(),
                 data: ColorData::NONE,
-                original: value
+                original: value.to_string()
             },
             "Parse \"{}\"",
             value
@@ -816,9 +819,9 @@ mod tests {
         assert_eq!(
             Color::new(value),
             Color {
-                pattern: "none",
+                pattern: "none".to_string(),
                 data: ColorData::NONE,
-                original: value
+                original: value.to_string()
             },
             "Parse \"{}\"",
             value
@@ -831,9 +834,9 @@ mod tests {
         assert_eq!(
             Color::new(value),
             Color {
-                pattern: "none",
+                pattern: "none".to_string(),
                 data: ColorData::NONE,
-                original: value
+                original: value.to_string()
             },
             "Parse \"{}\"",
             value
