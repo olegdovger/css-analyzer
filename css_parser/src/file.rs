@@ -7,11 +7,11 @@ use crate::color::translate_color;
 use std::iter::Peekable;
 use std::str::Chars;
 
-pub struct CssParser<'a> {
-    chars: Peekable<Chars<'a>>,
+pub struct CssParser {
+    chars: Peekable<Chars>,
 }
 
-impl<'a> CssParser<'a> {
+impl CssParser {
     pub fn new(full_css: &str) -> CssParser {
         CssParser {
             chars: full_css.chars().peekable(),
@@ -118,8 +118,8 @@ impl<'a> CssParser<'a> {
 
     fn parse_id(&mut self) -> Option<String> {
         match &self.parse_identifier()[..] {
-            "" => None,
-            s @ _ => Some(s.to_string()),
+            s => Some(s),
+            _ => None,
         }
     }
 

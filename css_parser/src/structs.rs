@@ -77,6 +77,19 @@ impl fmt::Debug for Stylesheet {
     }
 }
 
+impl fmt::Display for Stylesheet {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut rule_result = String::new();
+        for rule in &self.rules {
+            if rule_result.len() > 0 {
+                rule_result.push_str("\n\n");
+            }
+            rule_result.push_str(&format!("{:?}", rule));
+        }
+        write!(f, "{}", rule_result)
+    }
+}
+
 impl Rule {
     pub fn new(selectors: Vec<Selector>, declarations: Vec<Declaration>) -> Rule {
         Rule {
