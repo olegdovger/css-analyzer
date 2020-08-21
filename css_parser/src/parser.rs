@@ -2,7 +2,8 @@ use std::iter::{Iterator, Peekable};
 use std::str::Chars;
 
 use crate::color::Color;
-use crate::structs::{Declaration, Rule, Selector, SimpleSelector, Stylesheet, Unit, Value};
+use crate::selector::{Selector, SimpleSelector};
+use crate::structs::{Declaration, Rule, Stylesheet, Unit, Value};
 
 pub struct CssParser<'a> {
     chars: Peekable<Chars<'a>>,
@@ -19,6 +20,9 @@ impl<'a> CssParser<'a> {
         let mut stylesheet = Stylesheet::default();
 
         while self.chars.peek().is_some() {
+            self.consume_while(char::is_whitespace);
+            self.consume_comments();
+
             let selectors = self.parse_selectors();
             let styles = self.parse_declarations();
             let rule = Rule::new(selectors, styles);
@@ -27,6 +31,40 @@ impl<'a> CssParser<'a> {
         }
 
         stylesheet
+    }
+
+    fn consume_comments(&mut self) {
+        let start = {
+            if self.chars.peek() == Some(&'/') {
+                self.chars.next();
+            }
+
+            self.chars.peek() == Some(&'*')
+        };
+
+        if start {
+            let mut stop = false;
+
+            while !stop {
+                self.chars.next();
+
+                stop = {
+                    if self.chars.peek() == Some(&'*') {
+                        self.chars.next();
+                    }
+
+                    self.chars.next() == Some('/')
+                };
+
+                if stop {
+                    self.consume_while(char::is_whitespace);
+
+                    if self.chars.peek() == Some(&'/') {
+                        self.consume_comments()
+                    }
+                }
+            }
+        }
     }
 
     fn parse_selectors(&mut self) -> Vec<Selector> {
@@ -50,12 +88,12 @@ impl<'a> CssParser<'a> {
     }
 
     fn parse_selector(&mut self) -> Selector {
-        let mut sselector = SimpleSelector::default();
+        let mut s_selector = SimpleSelector::default();
         let mut selector = Selector::default();
 
         self.consume_while(char::is_whitespace);
 
-        sselector.tag_name = match self.chars.peek() {
+        s_selector.tag_name = match self.chars.peek() {
             Some(&c) if is_valid_start_ident(c) => Some(self.parse_identifier()),
             _ => None,
         };
@@ -69,12 +107,12 @@ impl<'a> CssParser<'a> {
             match self.chars.peek() {
                 Some(&c) if c == '#' => {
                     self.chars.next();
-                    if sselector.id.is_some() || multiple_ids {
-                        sselector.id = None;
+                    if s_selector.id.is_some() || multiple_ids {
+                        s_selector.id = None;
                         multiple_ids = true;
                         self.parse_id();
                     } else {
-                        sselector.id = self.parse_id();
+                        s_selector.id = self.parse_id();
                     }
                 }
                 Some(&c) if c == '.' => {
@@ -82,7 +120,7 @@ impl<'a> CssParser<'a> {
                     let class_name = self.parse_identifier();
 
                     if class_name != String::from("") {
-                        sselector.classes.push(class_name);
+                        s_selector.classes.push(class_name);
                     }
                 }
                 _ => {
@@ -91,8 +129,8 @@ impl<'a> CssParser<'a> {
             }
         }
 
-        if sselector != SimpleSelector::default() {
-            selector.simple.push(sselector);
+        if s_selector != SimpleSelector::default() {
+            selector.simple.push(s_selector);
         }
 
         selector
@@ -109,14 +147,13 @@ impl<'a> CssParser<'a> {
             }
             None => {}
         }
-        println!("{}", ident);
         ident.to_lowercase()
     }
 
     fn parse_id(&mut self) -> Option<String> {
         match &self.parse_identifier()[..] {
-            "" => None,
-            s @ _ => Some(s.to_string()),
+            s if s.len() > 0 => Some(s.to_string()),
+            _ => None,
         }
     }
 
@@ -125,6 +162,7 @@ impl<'a> CssParser<'a> {
 
         while self.chars.peek().map_or(false, |c| *c != '}') {
             self.consume_while(char::is_whitespace);
+            self.consume_comments();
 
             let property = self.consume_while(|x| x != ':').to_lowercase();
 
@@ -163,11 +201,13 @@ impl<'a> CssParser<'a> {
                 self.chars.next();
             } else {
                 self.consume_while(char::is_whitespace);
+
                 if self.chars.peek().map_or(false, |c| *c == '}') {
                     declarations.push(declaration);
                 }
             }
             self.consume_while(char::is_whitespace);
+            self.consume_comments();
         }
 
         self.chars.next();
@@ -193,7 +233,7 @@ fn translate_length(value: &str) -> Value {
     let mut parsing_num = true;
 
     for c in value.chars() {
-        if c.is_numeric() && parsing_num {
+        if (c.is_numeric() || c == '.') && parsing_num {
             num_str.push(c);
         } else {
             unit.push(c);
@@ -248,8 +288,8 @@ fn is_non_ascii(c: char) -> bool {
     c >= '\u{0080}'
 }
 
-pub fn parse_string(content: &str) -> Stylesheet {
-    let mut parser = CssParser::new(content);
+pub fn parse(content: &str) -> Stylesheet {
+    let mut parser = CssParser::new(content.trim());
 
     parser.parse_stylesheet()
 }
@@ -261,12 +301,14 @@ pub fn stringify(styles: Stylesheet) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     use crate::color::ColorData;
+    use std::fs::read_to_string;
 
     #[test]
     fn parse_string_empty() {
         assert_eq!(
-            parse_string(""),
+            parse(""),
             Stylesheet { rules: vec![] },
             "parse empty string"
         );
@@ -275,7 +317,7 @@ mod tests {
     #[test]
     fn parse_string_plain() {
         assert_eq!(
-            parse_string("body {color: red;}"),
+            parse("body {color: red;}"),
             Stylesheet {
                 rules: vec![Rule {
                     selectors: vec![Selector {
@@ -289,7 +331,7 @@ mod tests {
                     declarations: vec![Declaration {
                         property: "color".to_string(),
                         value: Value::Color(Color {
-                            original: "#ff0000".to_string(),
+                            original: "red".to_string(),
                             pattern: "#XXXXXX".to_string(),
                             data: ColorData::RGBA {
                                 r: 255.0,
@@ -302,6 +344,131 @@ mod tests {
                 }]
             },
             "parse plain css"
+        );
+    }
+
+    #[test]
+    fn stringify_plain_styles() {
+        assert_eq!("", stringify(Stylesheet { rules: vec![] }), "empty result");
+
+        let file_path = "../samples/plain.css";
+
+        let contents = read_to_string(&file_path).expect("Something went wrong reading the file");
+
+        assert_eq!(
+            contents.trim(),
+            stringify(Stylesheet {
+                rules: vec![Rule {
+                    selectors: vec![Selector {
+                        simple: vec![SimpleSelector {
+                            tag_name: Some("body".to_string()),
+                            id: None,
+                            classes: vec![]
+                        }],
+                        combinators: vec![],
+                    }],
+                    declarations: vec![Declaration {
+                        property: "color".to_string(),
+                        value: Value::Color(Color {
+                            original: "red".to_string(),
+                            pattern: "#XXXXXX".to_string(),
+                            data: ColorData::RGBA {
+                                r: 255.0,
+                                g: 0.0,
+                                b: 0.0,
+                                a: 1.0
+                            }
+                        })
+                    }],
+                }]
+            })
+            .trim(),
+            "plain result"
+        );
+    }
+
+    #[test]
+    fn parse_stringify_empty() {
+        assert_eq!("", stringify(parse("")), "empty result");
+    }
+
+    #[test]
+    fn parse_stringify_plain_styles() {
+        let file_path = "../samples/plain.css";
+        let contents = read_to_string(&file_path).expect("Something went wrong reading the file");
+
+        assert_eq!(contents.trim(), stringify(parse(&contents)));
+    }
+
+    #[test]
+    fn parse_stringify_ethalon_css_file() {
+        let file_path = "../samples/ethalon.css";
+        let contents = read_to_string(&file_path).expect("Something went wrong reading the file");
+
+        assert_eq!(contents.trim(), stringify(parse(&contents)));
+    }
+
+    #[test]
+    fn parse_single_comment() {
+        let mut parser = CssParser::new("/**/ body {color: red;}");
+
+        parser.consume_comments();
+
+        assert_eq!("body {color: red;}", parser.chars.collect::<String>());
+    }
+
+    #[test]
+    fn parse_only_single_comment() {
+        let mut parser = CssParser::new("/*  */ ");
+
+        parser.consume_comments();
+
+        assert_eq!(None, parser.chars.peek());
+    }
+
+    #[test]
+    fn parse_comments() {
+        let content_with_comments = read_to_string("../samples/comments/with.css")
+            .expect("Something went wrong reading the file");
+        let content_without_comments = read_to_string("../samples/comments/without.css")
+            .expect("Something went wrong reading the file");
+
+        assert_eq!(
+            content_without_comments.trim(),
+            stringify(parse(&content_with_comments))
+        );
+    }
+
+    #[test]
+    fn parse_selector() {
+        let mut parser = CssParser::new("#we4");
+
+        assert_eq!(
+            parser.parse_selector(),
+            Selector {
+                simple: vec![SimpleSelector {
+                    tag_name: None,
+                    id: Some("we4".to_string()),
+                    classes: vec![]
+                }],
+                combinators: vec![]
+            },
+            "parse id"
+        );
+
+        let mut parser = CssParser::new("#first, #second");
+
+        assert_eq!(
+            parser.parse_selector(),
+            Selector {
+                simple: vec![SimpleSelector {
+                    tag_name: None,
+                    id: Some("first".to_string()),
+                    classes: vec![]
+                }],
+                combinators: vec![]
+            },
+            "parse ids"
         );
     }
 }
